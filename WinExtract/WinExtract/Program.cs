@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Drawing;
 
 namespace WinExtract
@@ -98,22 +99,29 @@ namespace WinExtract
                 else if (chunk_name == "STRG")
                 {
                     STRG_offset = (uint)bread.BaseStream.Position;
-                    bwrite = new BinaryWriter(File.Open(input_folder + "STRG.txt", FileMode.Create));
+                    FileStream bwrite = new FileStream(input_folder + "STRG.txt", FileMode.Create);
+                    StreamWriter swrite = new System.IO.StreamWriter(bwrite, Encoding.UTF8);
                     uint strings = bread.ReadUInt32();
                     bread.BaseStream.Position += strings * 4;//Skip offsets
                     for (uint i = 0; i < strings; i++)
                     {
-                        uint string_size = bread.ReadUInt32()+1;                         
-                        for (uint j = 0; j < string_size; j++)
-                            bwrite.Write(bread.ReadByte());
-                        bwrite.BaseStream.Position--;
-                        bwrite.Write((byte)0x0D);
-                        bwrite.Write((byte)0x0A);
+                        uint string_size = bread.ReadUInt32();
+                        byte[] str = new byte[string_size];
+                        bread.BaseStream.Read(str, 0, (int)string_size);
+                        string text = Encoding.UTF8.GetString(str);
+                        bread.BaseStream.Position++;
+                        text = text.Replace("\r", "\\r");
+                        text = text.Replace("\n", "\\n");
+                        swrite.Write(String.Format("{0}\r\n{1}\r\n" , i,text));
+                        //bwrite.Write((byte)0x0D);
+                        //bwrite.Write((byte)0x0A);
                     }
                     long bacp = bread.BaseStream.Position;                    
                     recordFiles(collectFonts(input_folder), "FONT");
                     bread.BaseStream.Position = bacp;
-                    filesToCreate.Clear();                    
+                    filesToCreate.Clear();
+                    swrite.Close();
+                    bwrite.Close();
                 }
                 else if (chunk_name == "TXTR")
                 {
@@ -183,9 +191,15 @@ namespace WinExtract
                 bread.BaseStream.Position = chunk_offset;
             }
 
-            File.Open(input_folder + "translate.txt", FileMode.OpenOrCreate);
+            FileStream fs = File.Open(input_folder + "translate.txt", FileMode.OpenOrCreate);
+            fs.Close();
             Directory.CreateDirectory(input_folder + "patch");
-            File.Open(input_folder + "patch\\patch.txt", FileMode.OpenOrCreate);
+            FileStream fa = File.Open(input_folder + "patch\\patch.txt", FileMode.OpenOrCreate);
+            StreamWriter sw = new StreamWriter(fa);
+            sw.WriteLine("//int;string;string;int;int;int;int;int;");
+            sw.WriteLine("//font_id;old_font_name;font.bin;x;y;w;h;texture_id;");
+            sw.Close();
+            fa.Close();
         }           
 
         static List<uint> collect_entries(bool fnt)
@@ -279,6 +293,11 @@ namespace WinExtract
             bread.BaseStream.Position += 12;
             result.i = bread.ReadUInt16();
             bread.BaseStream.Position = bacup;
+            Console.WriteLine(String.Format("Got Sprite Offset:{0:x8},{1},{2},{3},{4},{5}",sprite_offset , result.x,
+                                                                                        result.y ,
+                                                                                        result.w , 
+                                                                                        result.h ,
+                                                                                        result.i));
             return result;
         }
 

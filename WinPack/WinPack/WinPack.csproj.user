@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <StartArguments>D:\Undertale_data\ D:\Games\Undertale\data.win</StartArguments>
+    <StartArguments>L:\IOS Android\com.laikastudio.shoujocity\新建文件夹\\game_unpack import\game.droid</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
     <StartArguments>D:\UT_data2\ D:\Games\Undertale\data.win</StartArguments>

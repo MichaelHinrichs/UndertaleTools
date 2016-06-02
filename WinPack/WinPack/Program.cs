@@ -40,10 +40,20 @@ namespace WinPack
                                 
                 if (chunk_name == "STRG")
                 {                    
-                    string[] strg = File.ReadAllLines(output_folder + "STRG.txt", System.Text.Encoding.UTF8);
+                    string[] strg0 = File.ReadAllLines(output_folder + "STRG.txt", System.Text.Encoding.UTF8);
+                    uint lines0 = (uint)strg0.Length;
+                    if (strg0[(int)(lines0 - 1)].Length == 0) lines0--;
+                    string[] strg = new string[strg0.Length / 2];
+                    for (int k = 0; k < lines0/2; k++)
+                    {
+                        string tmp;
+                        tmp = strg0[k * 2 + 1];
+                        tmp = tmp.Replace("\\r", "\r");
+                        tmp = tmp.Replace("\\n", "\n");
+                        strg[k] = tmp;
+
+                    }
                     uint lines = (uint)strg.Length;
-                    if (strg[(int)(lines - 1)].Length == 0) lines--;
-                                        
                     bwrite.Write(lines);
                     chunk_size += 4;
 
@@ -77,32 +87,38 @@ namespace WinPack
                     {
                         string[] patch = File.ReadAllLines(output_folder + "translate.txt", System.Text.Encoding.UTF8);
                         lines = (uint)patch.Length;
-                        if (patch[(int)(lines - 1)].Length == 0) lines--;
-                        bool patchNumber = true;
-                        for (int f = 0; f < lines; f++)
+                        if (lines > 1)
                         {
-                            string oneLine = patch[f];
-                            if (oneLine.IndexOf("//") == 0) continue;
-
-                            if (patchNumber)
+                            if (patch[(int)(lines - 1)].Length == 0) lines--;
+                            bool patchNumber = true;
+                            for (int f = 0; f < lines; f++)
                             {
-                                uint lineN = System.Convert.ToUInt32(oneLine);
-                                uint line_offset = chunk_offset + (lineN + 1) * 4;
+                                string oneLine = patch[f];
+                                //if (oneLine.IndexOf("//") == 0) continue;
 
-                                uint line_off = (uint)bwrite.BaseStream.Position;
-                                bwrite.BaseStream.Position = line_offset;
-                                bwrite.Write(line_off);
-                                bwrite.BaseStream.Position = line_off;
+                                if (patchNumber)
+                                {
+                                    uint lineN = System.Convert.ToUInt32(oneLine);
+                                    uint line_offset = chunk_offset + (lineN + 2) * 4;
+
+                                    uint line_off = (uint)bwrite.BaseStream.Position;
+                                    bwrite.BaseStream.Position = line_offset;
+                                    bwrite.Write(line_off);
+                                    bwrite.BaseStream.Position = line_off;
+                                }
+                                else
+                                {
+                                    oneLine = oneLine.Replace("\\r", "\r");
+                                    oneLine = oneLine.Replace("\\n", "\n");
+                                    uint lineLen = (uint)oneLine.Length;
+                                    bwrite.Write(lineLen); chunk_size += 4;
+                                    for (int j = 0; j < lineLen; j++)
+                                        bwrite.Write(oneLine[j]);
+                                    chunk_size += (uint)System.Text.Encoding.UTF8.GetByteCount(oneLine);
+                                    bwrite.Write((byte)0); chunk_size += 1;
+                                }
+                                patchNumber = !patchNumber;
                             }
-                            else {
-                                uint lineLen = (uint)oneLine.Length;
-                                bwrite.Write(lineLen); chunk_size += 4;
-                                for (int j = 0; j < lineLen; j++)
-                                    bwrite.Write(oneLine[j]);
-                                chunk_size += (uint)System.Text.Encoding.UTF8.GetByteCount(oneLine);
-                                bwrite.Write((byte)0); chunk_size += 1;
-                            }
-                            patchNumber = !patchNumber;
                         }
                     }
                     else {
@@ -126,7 +142,7 @@ namespace WinPack
                             ushort y = Convert.ToUInt16(par[4]);
                             ushort w = Convert.ToUInt16(par[5]);
                             ushort h = Convert.ToUInt16(par[6]);
-                            ushort s = Convert.ToUInt16(par[7]);
+                            ushort s = Convert.ToUInt16(par[7]); //count
 
                             uint bacp = (uint)bwrite.BaseStream.Position;
                             bwrite.BaseStream.Position = FONT_offset + 4 * (index_replaced + 1);//!!!
@@ -136,7 +152,7 @@ namespace WinPack
                             //Подготовка шрифта
                             uint font_size = (uint)new FileInfo(patch_path + "\\" + new_font_name).Length;
                             BinaryReader new_font_file = new BinaryReader(File.Open(patch_path + "\\" + new_font_name, FileMode.Open));
-                            BinaryReader old_font_file = new BinaryReader(File.Open(patch_path + "\\" + old_font_name, FileMode.Open));
+                            BinaryReader old_font_file = new BinaryReader(File.Open(output_folder + "FONT\\" + old_font_name, FileMode.Open));
 
                             for (uint j = 0; j < 8; j++)
                                 bwrite.Write(old_font_file.ReadByte());//Name and font family
@@ -162,6 +178,9 @@ namespace WinPack
                                 bwrite.Write(new_font_file.ReadByte());
 
                             chunk_size += font_size;
+                            new_font_file.Close();
+                            old_font_file.Close();
+
                         }
                     }
                     else {
